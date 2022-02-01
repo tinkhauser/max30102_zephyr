@@ -1,0 +1,8 @@
+#
+# Copyright (c) 2022 Jacob Tinkhauser
+# Copyright (c) 2022 EVERGREEN FUND 501(c)3
+#
+
+menu "Max30102 driver"
+rsource "max30102/Kconfig"
+endmenu

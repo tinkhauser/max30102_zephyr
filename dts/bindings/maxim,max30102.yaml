@@ -1,0 +1,10 @@
+# Copyright (c) 2021 Jacob Tinkhauser
+# Copyright (c) 2021 EVERGREEN FUND 501(c)3
+
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+description: MAX30102 heart rate sensor
+
+compatible: "maxim,max30102"
+
+include: i2c-device.yaml

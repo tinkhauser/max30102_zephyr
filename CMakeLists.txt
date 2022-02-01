@@ -1,14 +1,14 @@
+#
+# Copyright (c) 2022 Jacob Tinkhauser
+# Copyright (c) 2022 EVERGREEN FUND 501(c)3
+#
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-list(APPEND ZEPHYR_EXTRA_MODULES
-  ${CMAKE_CURRENT_SOURCE_DIR}/max30102_module
-  )
+# Point to this project's root directory.
+set(MAX_WORK_DIR ${CMAKE_CURRENT_LIST_DIR} CACHE PATH "Max30102 driver root directory")
 
-cmake_minimum_required(VERSION 3.20.0)
+# Subdirectories
+add_subdirectory(max30102)
 
-find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(alyce)
-
-target_sources(app PRIVATE
-  src/main.c
-  )
+# Include headers
+zephyr_include_directories(max30102)
