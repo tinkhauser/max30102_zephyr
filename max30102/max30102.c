@@ -1,5 +1,7 @@
+/* max30102.c - Driver for Maxim MAX30102 */
+
 /*
- * Copyright (c) 2021, EVERGREEN FUND 501(c)(3)
+ * Copyright (c) 2021, 2022 EVERGREEN FUND 501(c)(3)
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
@@ -11,6 +13,10 @@
 #include "max30102.h"
 
 LOG_MODULE_REGISTER(MAX30102, CONFIG_SENSOR_LOG_LEVEL);
+
+#if DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) == 0
+#warning "MAX30102 driver enabled without any devices"
+#endif
 
 /**
  * @brief Read interrupt status register 1 (0x00) on MAX30102
@@ -54,9 +60,8 @@ uint8_t max30102_get_interrupt_status_2(const struct device *dev) {
 	return status;
 }
 
-// TODO: What is this doing?
-static int max30102_sample_fetch(const struct device *dev,
-				 enum sensor_channel chan)
+/* TODO check for ALC overflow */
+static int max30102_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
 	struct max30102_data *data = dev->data;
 	const struct max30102_config *config = dev->config;
@@ -66,7 +71,7 @@ static int max30102_sample_fetch(const struct device *dev,
 	int num_bytes;
 	int i;
 
-	/* Read all the active channels for one sample */
+	/* Read all the active channels for one 18-bit sample */
 	num_bytes = data->num_channels * MAX30102_BYTES_PER_CHANNEL;
 	if (i2c_burst_read(data->i2c, config->i2c_addr,
 			   MAX30102_REG_FIFO_DATA, buffer, num_bytes)) {
@@ -75,17 +80,18 @@ static int max30102_sample_fetch(const struct device *dev,
 	}
 
 	fifo_chan = 0;
-	for (i = 0; i < num_bytes; i += 3) {
+	for (i = 0; i < num_bytes; i += MAX30102_BYTES_PER_CHANNEL) {
 		/* Each channel is 18-bits */
 		fifo_data = (buffer[i] << 16) | (buffer[i + 1] << 8) |
 			    (buffer[i + 2]);
 		fifo_data &= MAX30102_FIFO_DATA_MASK;
 
-		/* Save the raw data */
+		/* Save the raw data per channel*/
 		data->raw[fifo_chan++] = fifo_data;
 	}
 
 	/* Read Status 1 register to clear interrupt */
+	/* TODO #ifdef CONFIG_MAX30102_INTERUPT */
 	uint8_t status;
 	if (i2c_reg_read_byte(data->i2c, config->i2c_addr,
 						  MAX30102_REG_INT_STS1, &status))
@@ -93,10 +99,33 @@ static int max30102_sample_fetch(const struct device *dev,
 		LOG_ERR("Couldn't read INT_STS1");
 		return -EIO;
 	}
+
+	if (chan == SENSOR_CHAN_DIE_TEMP)
+	{
+
+		uint8_t tint = 0;
+		uint8_t tfrac = 0;
+
+		if (i2c_reg_read_byte(data->i2c, config->i2c_addr,
+							  MAX30102_REG_TINT, &tint))
+		{
+			LOG_ERR("Couldn't read TINT");
+			return -EIO;
+		}
+
+		if (i2c_reg_read_byte(data->i2c, config->i2c_addr,
+							  MAX30102_REG_TFRAC, &tfrac))
+		{
+			LOG_ERR("Couldn't read TFRAC");
+			return -EIO;
+		}
+
+		data->tint = tint;
+		data->tfrac = tfrac;
+	}
 	return 0;
 }
 
-// TODO add temp channel
 static int max30102_channel_get(const struct device *dev,
 				enum sensor_channel chan,
 				struct sensor_value *val)
@@ -108,62 +137,47 @@ static int max30102_channel_get(const struct device *dev,
 	switch (chan) {
 	case SENSOR_CHAN_RED:
 		led_chan = MAX30102_LED_CHANNEL_RED;
+		/* Check if the led channel is active by looking up the associated fifo
+		 * channel. If the fifo channel isn't valid, then the led channel
+		 * isn't active.
+		 */
+		fifo_chan = data->map[led_chan];
+		if (fifo_chan >= MAX30102_MAX_NUM_CHANNELS)
+		{
+			LOG_ERR("Inactive sensor channel");
+			return -ENOTSUP;
+		}
+
+		val->val1 = data->raw[fifo_chan];
+		val->val2 = 0;
 		break;
 
 	case SENSOR_CHAN_IR:
 		led_chan = MAX30102_LED_CHANNEL_IR;
+		/* Check if the led channel is active by looking up the associated fifo
+		 * channel. If the fifo channel isn't valid, then the led channel
+		 * isn't active.
+		 */
+		fifo_chan = data->map[led_chan];
+		if (fifo_chan >= MAX30102_MAX_NUM_CHANNELS)
+		{
+			LOG_ERR("Inactive sensor channel");
+			return -ENOTSUP;
+		}
+
+		val->val1 = data->raw[fifo_chan];
+		val->val2 = 0;
 		break;
 
-/*
-	case SENSOR_CHAN_GREEN:
-		led_chan = MAX30102_LED_CHANNEL_GREEN;
+	case SENSOR_CHAN_DIE_TEMP:
+		val->val1 = data->tint;
+		val->val2 = (data->tfrac * 62500); /* 0.0625 * 10^6 */
 		break;
-        */
 
 	default:
 		LOG_ERR("Unsupported sensor channel");
 		return -ENOTSUP;
 	}
-
-	/* Check if the led channel is active by looking up the associated fifo
-	 * channel. If the fifo channel isn't valid, then the led channel
-	 * isn't active.
-	 */
-	fifo_chan = data->map[led_chan];
-	if (fifo_chan >= MAX30102_MAX_NUM_CHANNELS) {
-		LOG_ERR("Inactive sensor channel");
-		return -ENOTSUP;
-	}
-
-	/* TODO: Scale the raw data to standard units */
-	val->val1 = data->raw[fifo_chan];
-	val->val2 = 0;
-
-	return 0;
-}
-
-int max30102_get_temp(const struct device *dev, struct max30102_temp *temp) {
-	struct max30102_data *data = dev->data;
-	const struct max30102_config *config = dev->config;
-	uint8_t tint = 0;
-	uint8_t tfrac = 0;
-
-	if (i2c_reg_read_byte(data->i2c, config->i2c_addr,
-			      MAX30102_REG_TINT, &tint)) {
-		LOG_ERR("Couldn't read TINT");
-		return -EIO;
-	}
-
-	if (i2c_reg_read_byte(data->i2c, config->i2c_addr,
-			      MAX30102_REG_TFRAC, &tfrac)) {
-		LOG_ERR("Couldn't read TFRAC");
-		return -EIO;
-	}
-	temp->tint = tint;
-	temp->tfrac = tfrac;
-
-	float calc_temp = (float)temp->tint + ((float)temp->tfrac * 0.0625);
-	LOG_INF("Die temperature %f", calc_temp);
 
 	return 0;
 }

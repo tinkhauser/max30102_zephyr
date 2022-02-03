@@ -114,9 +114,8 @@ struct max30102_data {
 	uint32_t raw[MAX30102_MAX_NUM_CHANNELS];
 	uint8_t map[MAX30102_MAX_NUM_CHANNELS];
 	uint8_t num_channels;
-};
 
-struct max30102_temp {
+	/* Die temperature */
 	int8_t tint;
 	uint8_t tfrac;
 };
@@ -124,4 +123,3 @@ struct max30102_temp {
 uint32_t reverse_32(uint32_t value);
 uint8_t max30102_get_interrupt_status_1(const struct device *dev);
 uint8_t max30102_get_interrupt_status_2(const struct device *dev);
-int max30102_get_temp(const struct device *dev, struct max30102_temp *temp);
