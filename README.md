@@ -1,5 +1,8 @@
 # max30102_zephyr
-Pin P0.13 used for receiving interrupts from MAX30102. For use in Zephyr.
+This is a device driver for the Maxim MAX30102 SpO2 sensor
+
+## Hardware Setup:
+Pin P0.20 used for receiving interrupts from MAX30102
 
 ## Run:
-    Build and run vscode with nrfconnect
+    See instructions at https://github.com/tinkhauser/max30102-demo
