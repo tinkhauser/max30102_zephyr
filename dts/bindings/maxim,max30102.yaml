@@ -8,3 +8,110 @@ description: MAX30102 heart rate sensor
 compatible: "maxim,max30102"
 
 include: i2c-device.yaml
+
+properties:
+  smp-ave:
+    type: int
+    required: false
+    default: 0
+    description: |
+      To reduce the amount of data throughput, adjacent samples (in each
+      individual channel) can be averaged and decimated on the chip by
+      setting this register. Set to 0 for no averaging.
+    enum:
+      - 0 # 1 sample (no averaging)
+      - 1 # 2 samples
+      - 2 # 4 samples
+      - 3 # 8 samples
+      - 4 # 16 samples
+      - 5 # 32 samples
+  fifo-rollover-en:
+    type: boolean
+    description: |
+      Controls the behavior of the FIFO when the FIFO becomes completely
+      filled with data. If true, the FIFO address rolls over to zero and the
+      FIFO continues to fill with new data. If false, then the FIFO is
+      not updated until FIFO_DATA is read or the WRITE/READ pointer
+      positions are changed.
+  fifo-a-full:
+    type: int
+    required: false
+    default: 0
+    description: |
+      Set the trigger for the FIFO_A_FULL interrupt. 
+      Valid range: 0-15
+  mode:
+    type: int
+    required: true
+    description: |
+      heart-rate-mode is red LED only
+      spo2-mode is red and IR LEDs
+      multi-led-mode is red and/or IR LEDs
+    enum:
+      - 2 # "heart-rate-mode"
+      - 3 # "spo2-mode"
+      - 7 # "multi-led-mode"
+  adc-rge: 
+    type: int
+    required: false
+    default: 2
+    description: Set the ADC's full-scale range.
+    enum:
+      - 0 # 7.81 pA/LSB
+      - 1 # 15.63 pA/LSB
+      - 2 # 31.25 pA/LSB
+      - 3 # 62.5 pA/LSB
+  sr:
+    type: int
+    required: false
+    default: 0
+    description: | 
+      Set the effective sampling rate with one sample consisting of one
+      pulse/conversion per active LED channel. In SpO2 mode, these means
+      one IR pulse/conversion and one red pulse/conversion per sample
+      period.
+    enum:
+      - 0 # 50 Hz
+      - 1 # 100 Hz
+      - 2 # 200 Hz
+      - 3 # 400 Hz
+      - 4 # 800 Hz
+      - 5 # 1000 Hz
+      - 6 # 1600 Hz
+      - 7 # 3200 Hz
+  led1-pa:
+    type: int
+    required: false
+    default: 0x33
+    description: |
+      Set the pulse amplitude to control the LED1 (red) current. The actual
+      measured LED current for each part can vary significantly due to the
+      trimming methodology. 
+      Valid range: 0 - 0xff
+      0x00 = 0.0 mA
+      0x01 = 0.2 mA
+      0x02 = 0.4 mA
+      ...
+      0x0f = 3.1 mA
+      ...
+      0xff = 50.0 mA
+  led2-pa:
+    type: int
+    required: false
+    default: 0x33
+    description: |
+      Set the pulse amplitude to control the LED2 (IR) current. The actual
+      measured LED current for each part can vary significantly due to the
+      trimming methodology. 
+      Valid range: 0 - 0xff
+      0x00 = 0.0 mA
+      0x01 = 0.2 mA
+      0x02 = 0.4 mA
+      ...
+      0x0f = 3.1 mA
+      ...
+      0xff = 50.0 mA
+  # TODO: Implement multi-led-mode support
+  intb-gpios:
+    type: phandle-array
+    required: false
