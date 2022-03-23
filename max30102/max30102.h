@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, Jacob Tinkhauser
- * Copyright (c) 2021, EVERGREEN FUND 501(c)(3)
+ * Copyright (c) 2021 EVERGREEN FUND 501(c)(3)
+ * Copyright (c) 2021, 2022 Jacob Tinkhauser
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */

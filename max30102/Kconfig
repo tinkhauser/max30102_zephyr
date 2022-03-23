@@ -1,6 +1,8 @@
 # MAX30102 heart rate sensor
 #
 # Copyright (c) 2022 EVERGREEN FUND 501(c)(3)
+# Copyright (c) 2022 Jacob Tinkhauser
+#
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
 
@@ -44,7 +46,7 @@ config MAX30102_THREAD_PRIORITY
 config MAX30102_THREAD_STACK_SIZE
     int "Thread stack size"
     depends on MAX30102_TRIGGER_OWN_THREAD && MAX30102_TRIGGER
-    default 1024
+    default 2048
     help
       Stack size of thread used by the driver to handle interrupts.
 
